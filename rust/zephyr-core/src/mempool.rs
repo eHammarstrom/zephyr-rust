@@ -1,15 +1,16 @@
 use core::alloc::{GlobalAlloc, Layout};
+use zephyr_sys::raw::K_NO_WAIT;
 
-pub use zephyr_sys::raw::sys_mem_pool;
+pub use zephyr_sys::raw::k_heap;
 
-pub struct MempoolAlloc(pub &'static sys_mem_pool);
+pub struct MempoolAlloc(pub &'static k_heap);
 
 unsafe impl Send for MempoolAlloc {}
 unsafe impl Sync for MempoolAlloc {}
 
 unsafe impl GlobalAlloc for MempoolAlloc {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        let ret = zephyr_sys::raw::sys_mem_pool_alloc(self.0 as *const _ as *mut _, layout.size())
+        let ret = zephyr_sys::raw::k_heap_aligned_alloc(self.0 as *const _ as *mut _, layout.align(), layout.size(), K_NO_WAIT)
             as *mut _;
         if ret as usize & (layout.align() - 1) != 0 {
             zephyr_sys::raw::printk(
@@ -22,20 +23,20 @@ unsafe impl GlobalAlloc for MempoolAlloc {
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
-        zephyr_sys::raw::sys_mem_pool_free(ptr as *mut _)
+        zephyr_sys::raw::k_heap_free(self.0 as *const _ as *mut _, ptr as *mut _)
     }
 }
 
 /// Assign a Zephyr sys mem pool as #[global_allocator]
 ///
-/// This should be defined with SYS_MEM_POOL_DEFINE and granted permission to any
+/// This should be defined with K_HEAP_DEFINE and granted permission to any
 /// Rust threads that need to use libstd or alloc.
 #[macro_export]
 macro_rules! global_sys_mem_pool {
     ($pool:ident) => {
         extern "C" {
             #[no_mangle]
-            static $pool: $crate::mempool::sys_mem_pool;
+            static $pool: $crate::mempool::k_heap;
         }
 
         #[global_allocator]

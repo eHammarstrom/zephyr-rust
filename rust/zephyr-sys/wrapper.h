@@ -5,11 +5,11 @@
 #include <kernel.h>
 #include <all_syscalls.h>
 #include <version.h>
-#if ZEPHYR_VERSION_CODE >= ZEPHYR_VERSION(2, 2, 0)
+#if ZEPHYR_VERSION_CODE < ZEPHYR_VERSION(2, 5, 0)
 #include <sys/mempool.h>
-#else
+#elif ZEPHYR_VERSION_CODE < ZEPHYR_VERSION(2, 2, 0)
 #include <misc/mempool.h>
-#endif
+#endif /* ZEPHYR_VERSION_CODE */
 #include <device.h>
 #include <drivers/uart.h>
 #include <uart_buffered.h>
